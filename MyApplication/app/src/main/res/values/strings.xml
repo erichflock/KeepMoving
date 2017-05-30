@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Keep moving</string>
+    <string name="title_activity_music_player">MusicPlayer</string>
+</resources>
