@@ -1,4 +1,4 @@
-package com.example.erich.myapplication;
+package com.flock.keepmoving;
 
 import android.Manifest;
 import android.content.Context;
@@ -12,6 +12,7 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -19,11 +20,14 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.flock.keepmoving.R;
 
 import java.io.IOException;
 
 public class MusicPlayer extends AppCompatActivity implements SensorEventListener, MediaPlayer.OnPreparedListener, android.location.LocationListener {
-    private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 0, MY_PERMISSIONS_REQUEST_ACCESS_LOCATION = 0;
+    private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 110, MY_PERMISSIONS_REQUEST_ACCESS_LOCATION = 111;
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
     private MediaPlayer mediaPlayerRun, mediaPlayerBike;
@@ -40,92 +44,98 @@ public class MusicPlayer extends AppCompatActivity implements SensorEventListene
         setContentView(R.layout.activity_music_player);
 
         /*
-        Request permission to read the data in the mobile
-         */
+         Request permission to access Location
+        */
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                    MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
-        }
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
+                    MY_PERMISSIONS_REQUEST_ACCESS_LOCATION);
+        } else if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                        MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+            }
+            else {
+            /*
+            All permissions granted
+             */
 
         /*
         create the objects responsible for receiving the location
         http://stackoverflow.com/questions/16898675/how-does-it-work-requestlocationupdates-locationrequest-listener
          */
 
-        mLocationClient = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            /*
-            Request permission to access Location
-            */
-            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
-                    MY_PERMISSIONS_REQUEST_ACCESS_LOCATION);
-            return;
+            mLocationClient = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+                //Request permission to access Location
+
+                requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
+                        MY_PERMISSIONS_REQUEST_ACCESS_LOCATION);
+            }
+            mLocationClient.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
+
+
+            //Initialize textViewActivity: displays the activity
+
+            textViewSpeed = (TextView) findViewById(R.id.textViewSpeed);
+
+            //Initialize Media Players objects
+
+            mediaPlayerRun = new MediaPlayer();
+            mediaPlayerBike = new MediaPlayer();
+
+
+            //https://developer.android.com/guide/topics/sensors/sensors_overview.html
+
+            mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+            mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+
+            //http://www.techrepublic.com/blog/software-engineer/a-quick-tutorial-on-coding-androids-accelerometer/
+
+            mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+
+
+            //http://stackoverflow.com/questions/17042308/select-a-music-file-to-play-with-mediaplayer
+            //Allows the user to choose a file
+
+
+            //Choose a music to run
+
+            chooseFileRun = (Button) findViewById(R.id.chooseFileRun);
+            chooseFileRun.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    buttonRun = true;
+
+                    //Release and initialize Media Player every time the button is pressed in order to allow the user to change the song.
+
+                    mediaPlayerRun.release();
+                    mediaPlayerRun = new MediaPlayer();
+                    Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI);
+                    startActivityForResult(intent, 10);
+                }
+            });
+
+
+            //Choose a music to bike
+
+            chooseFileBike = (Button) findViewById(R.id.chooseFileBike);
+            chooseFileBike.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    buttonRun = false;
+
+                    //Release and initialize Media Player every time the button is pressed in order to allow the user to change the song.
+
+                    mediaPlayerBike.release();
+                    mediaPlayerBike = new MediaPlayer();
+                    Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI);
+                    startActivityForResult(intent, 10);
+                }
+            });
         }
-        mLocationClient.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
-
-        /*
-        Initialize textViewActivity: displays the activity
-         */
-        textViewSpeed = (TextView) findViewById(R.id.textViewSpeed);
-
-        /*
-        Initialize Media Players objects
-        */
-        mediaPlayerRun = new MediaPlayer();
-        mediaPlayerBike = new MediaPlayer();
-
-        /*
-        https://developer.android.com/guide/topics/sensors/sensors_overview.html
-         */
-        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-
-        /*
-        http://www.techrepublic.com/blog/software-engineer/a-quick-tutorial-on-coding-androids-accelerometer/
-         */
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-
-        /*
-        http://stackoverflow.com/questions/17042308/select-a-music-file-to-play-with-mediaplayer
-        Allows the user to choose a file
-         */
-
-        /*
-        Choose a music to run
-         */
-        chooseFileRun = (Button) findViewById(R.id.chooseFileRun);
-        chooseFileRun.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                buttonRun = true;
-                /*
-                Release and initialize Media Player every time the button is pressed in order to allow the user to change the song.
-                */
-                mediaPlayerRun.release();
-                mediaPlayerRun = new MediaPlayer();
-                Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI);
-                startActivityForResult(intent, 10);
-            }
-        });
-
-        /*
-        Choose a music to bike
-         */
-        chooseFileBike = (Button) findViewById(R.id.chooseFileBike);
-        chooseFileBike.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                buttonRun = false;
-                /*
-                Release and initialize Media Player every time the button is pressed in order to allow the user to change the song.
-                */
-                mediaPlayerBike.release();
-                mediaPlayerBike = new MediaPlayer();
-                Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI);
-                startActivityForResult(intent, 10);
-            }
-        });
     }
 
 
@@ -286,4 +296,31 @@ public class MusicPlayer extends AppCompatActivity implements SensorEventListene
 
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_ACCESS_LOCATION: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Location permission granted.", Toast.LENGTH_SHORT).show();
+                    //reload my activity with permission granted or use the features what required the permission
+                    finish();
+                    startActivity(getIntent());
+                } else{
+                    Toast.makeText(this, "The app was not allowed to get your location. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
+                }
+            }
+            case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Read permission granted.", Toast.LENGTH_SHORT).show();
+                    //reload my activity with permission granted or use the features what required the permission
+                    finish();
+                    startActivity(getIntent());
+                } else{
+                    Toast.makeText(this, "The app was not allowed to read your files. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
+                }
+            }
+        }
+    }
 }

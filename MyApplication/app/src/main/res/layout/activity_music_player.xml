@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.example.erich.myapplication.MusicPlayer">
+    tools:context="com.example.erich.myapplication.com.flock.keepmoving.MusicPlayer">
 
     <Button
         android:id="@+id/chooseFileRun"
